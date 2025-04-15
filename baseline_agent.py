@@ -17,7 +17,6 @@ from finrl.meta.env_portfolio_optimization.env_portfolio_optimization import Por
 from finrl.agents.portfolio_optimization.models import DRLAgent
 from finrl.agents.portfolio_optimization.architectures import EIIE
 from finrl.main import check_and_make_directories
-# from finrl.config_tickers import TOP_BRL  # If not defined, we will override it below.
 from finrl.plot import backtest_stats, backtest_plot, get_baseline
 
 # ---------------------------
@@ -28,7 +27,6 @@ check_and_make_directories(["data", "trained_models", "tensorboard_log", "result
 # ---------------------------
 # 3. Define tickers and Fetch Data
 # ---------------------------
-# Define a list for 10 Brazilian stocks (this list is similar to the sample)
 TOP_BRL = [
     "VALE3.SA", "PETR4.SA", "ITUB4.SA", "BBDC4.SA",
     "BBAS3.SA", "RENT3.SA", "LREN3.SA", "PRIO3.SA",
@@ -47,7 +45,7 @@ print("Raw data shape:", portfolio_raw_df.shape)
 # ---------------------------
 # Use GroupByScaler with MaxAbsScaler to scale each stock’s series into [0, 1]
 portfolio_norm_df = GroupByScaler(by="tic", scaler=MaxAbsScaler).fit_transform(portfolio_raw_df)
-# We'll work only with a few columns needed by the environment.
+# We'll work only with the columns needed by the environment.
 df_portfolio = portfolio_norm_df[["date", "tic", "close", "high", "low"]]
 
 # ---------------------------
@@ -61,12 +59,11 @@ print("Test data shape:", df_test.shape)
 # ---------------------------
 # 6. Instantiate the Portfolio Optimization Environment
 # ---------------------------
-# For portfolio optimization, we set a time window (e.g., 50 days) and pass the features to be used.
 env_kwargs = {
-    "initial_amount": 100000,         # starting cash
-    "comission_fee_pct": 0.0025,        # commission fee (2.5 basis points)
-    "time_window": 50,                # time window for each episode
-    "features": ["close", "high", "low"],  # features used by the environment
+    "initial_amount": 100000,         # Starting cash amount
+    "comission_fee_pct": 0.0025,        # Transaction cost percentage
+    "time_window": 50,                # Time window (number of timesteps per episode)
+    "features": ["close", "high", "low"],  # Features used by the environment
     "normalize_df": None              # Data is already normalized
 }
 environment_train = PortfolioOptimizationEnv(df=df_train, **env_kwargs)
@@ -75,29 +72,28 @@ environment_test  = PortfolioOptimizationEnv(df=df_test, **env_kwargs)
 # ---------------------------
 # 7. Initialize and Train a PG (Policy Gradient) Model Using the EIIE Architecture
 # ---------------------------
-# In FinRL's portfolio optimization module, the available algorithm is "pg" (Policy Gradient).
 agent = DRLAgent(environment_train)
 
-# Set PG algorithm parameters and the EIIE architecture's parameters.
+# Set PG algorithm parameters and specify the EIIE architecture via the 'policy' field.
 model_kwargs = {
-    "lr": 0.01,    # learning rate
-    "policy": EIIE # use the EIIE architecture
+    "lr": 0.01,    # Learning rate for the policy
+    "policy": EIIE # Use the EIIE policy architecture
 }
 policy_kwargs = {
     "time_window": env_kwargs["time_window"],
-    "k_size": 3
+    "k_size": 3   # A parameter of the EIIE architecture (kernel size)
 }
 
-# Get the model using "pg" (note: do not use "ppo" here)
+# Get the model (using "pg" since FinRL's portfolio optimization currently supports PG).
 model = agent.get_model("pg", model_kwargs=model_kwargs, policy_kwargs=policy_kwargs)
 
-# Train the model on the training environment for a few episodes (here, 5 for a quick test)
+# Train the model for a few episodes (here, 5 episodes for a quick test)
 trained_model = DRLAgent.train_model(model, episodes=5)
 
 # ---------------------------
 # 8. Validate the Trained Model on the Test Environment
 # ---------------------------
-# Use the DRLAgent.DRL_validation method to run the trained policy on the test environment.
+# This will run the model on the testing environment using DRLAgent's built-in validation.
 DRLAgent.DRL_validation(trained_model, environment_test)
 
 # Retrieve the portfolio value history from the test environment.
@@ -105,7 +101,17 @@ final_asset_values = environment_test._asset_memory["final"]
 print("Final asset value from test environment:", final_asset_values)
 
 # ---------------------------
-# 9. Quick Plot to Verify Results
+# 9. Save the Trained Model
+# ---------------------------
+# Here we save the state dictionary of the trained policy network.
+# Depending on the DRL model used, the policy network is typically stored in an attribute.
+# In our PG agent (based on EIIE), it's available as `train_policy`.
+save_path = "trained_models/trained_policy_EIIE.pt"
+torch.save(trained_model.train_policy.state_dict(), save_path)
+print(f"Trained model saved to {save_path}")
+
+# ---------------------------
+# 10. Quick Plot to Verify Results
 # ---------------------------
 plt.figure(figsize=(8, 4))
 plt.plot(final_asset_values, label="Portfolio Value (PG/EIIE)")
