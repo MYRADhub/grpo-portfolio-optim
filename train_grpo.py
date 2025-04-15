@@ -1,3 +1,4 @@
+# train_grpo.py
 import datetime
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -102,15 +103,15 @@ grpo_model = agent.get_model("grpo", model_kwargs=model_kwargs, policy_kwargs=po
 # Train the GRPO Model
 # ---------------------------
 print("Starting GRPO training...")
-grpo_model.train(total_timesteps=1000)  # Use a small number for a quick test
+grpo_model.train(total_timesteps=1000)  # Quick test training
 
 # ---------------------------
 # Evaluate the GRPO model on the test environment (recording actions)
 # ---------------------------
 actions_history = []
 state = env_test.reset()
-# Assuming the environment keeps track of date information in its internal memory.
-dates = env_test._date_memory[:] if hasattr(env_test, "_date_memory") else [str(datetime.date.today())] * 100
+# Try to get date information from env_test, otherwise None
+dates = env_test._date_memory if hasattr(env_test, "_date_memory") and env_test._date_memory is not None else None
 done = False
 while not done:
     action = grpo_model.predict(state)
@@ -120,7 +121,7 @@ final_value = env_test._asset_memory["final"]
 print("Final portfolio value (GRPO):", final_value)
 
 # ---------------------------
-# Define Plotting Functions
+# Plotting Functions
 # ---------------------------
 def plot_portfolio_value_history(values, filename="results/grpo_portfolio_value.png"):
     plt.figure(figsize=(10, 6))
@@ -134,7 +135,6 @@ def plot_portfolio_value_history(values, filename="results/grpo_portfolio_value.
     plt.close()
 
 def plot_rewards_from_values(values, filename="results/grpo_rewards.png"):
-    # Compute rewards as the change from the previous portfolio value
     rewards = [values[i] - values[i-1] for i in range(1, len(values))]
     plt.figure(figsize=(10, 6))
     plt.plot(rewards, label="Reward (Change in Value)", color='green', alpha=0.8)
@@ -160,27 +160,30 @@ def plot_actions(actions, filename="results/grpo_actions.png"):
     plt.savefig(filename)
     plt.close()
 
+# Still produces an error
 def generate_quantstats_report(portfolio_values, filename="results/quantstats_report.html"):
     import quantstats as qs
-    # Create a pandas Series from portfolio values
-    # Here we assume one entry per timestep and use a date range if available.
-    # If dates are available from env_test, use them; otherwise, generate dummy dates.
-    if hasattr(env_test, "_date_memory") and len(env_test._date_memory) == len(portfolio_values):
-        series = pd.Series(data=portfolio_values, index=pd.to_datetime(env_test._date_memory))
+    import numpy as np
+    # Convert portfolio_values to numeric if it's not already
+    if isinstance(portfolio_values, (list, dict)):
+        values = np.array([float(v) for v in portfolio_values.values()] if isinstance(portfolio_values, dict) else portfolio_values)
     else:
-        # Generate a date range starting today
-        series = pd.Series(data=portfolio_values, index=pd.date_range(start=datetime.date.today(), periods=len(portfolio_values)))
-    qs.reports.html(series, output=filename, title="GRPO Portfolio Summary")
+        values = portfolio_values
+    # Create an index with daily frequency
+    dt_index = pd.date_range(start=datetime.date.today(), periods=len(values), freq='D')
+    price_series = pd.Series(data=values, index=dt_index)
+    # Compute daily returns (percentage change)
+    returns = price_series.pct_change().dropna()
+    qs.reports.html(returns, output=filename, title="GRPO Portfolio Summary")
 
 # ---------------------------
 # Call Plot Functions
 # ---------------------------
-plot_portfolio_value_history(final_value)
-plot_rewards_from_values(final_value)
-plot_actions(actions_history)
-# Generate QuantStats report using portfolio value series (if quantstats is installed)
+plot_portfolio_value_history(final_value, filename="results/grpo_portfolio_value.png")
+plot_rewards_from_values(final_value, filename="results/grpo_rewards.png")
+plot_actions(actions_history, filename="results/grpo_actions.png")
 try:
-    generate_quantstats_report(final_value)
+    generate_quantstats_report(final_value, filename="results/quantstats_report.html")
 except Exception as e:
     print(f"Error generating quantstats report: {e}")
 
