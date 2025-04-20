@@ -1,8 +1,9 @@
-# train_grpo.py
+import numpy as np
 import datetime
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.preprocessing import MaxAbsScaler
+from eval import evaluate_portfolio 
 
 # Import FinRL modules
 from finrl.agents.portfolio_optimization.models import DRLAgent
@@ -42,34 +43,42 @@ check_and_make_directories(["data", "trained_models", "tensorboard_log", "result
 # ---------------------------
 # Define Portfolio Tickers and Fetch Data
 # ---------------------------
-TOP_BRL = [
-    "VALE3.SA", "PETR4.SA", "ITUB4.SA", "BBDC4.SA",
-    "BBAS3.SA", "RENT3.SA", "LREN3.SA", "PRIO3.SA",
-    "WEGE3.SA", "ABEV3.SA"
-]
-print(f"Number of tickers: {len(TOP_BRL)}")
 
-# Download raw data (from 2011-01-01 to 2022-12-31)
-df_raw = YahooDownloader(start_date='2011-01-01',
-                         end_date='2022-12-31',
-                         ticker_list=TOP_BRL).fetch_data()
+TOP_WLRD = [
+    "^GSPC",   # S&P 500 🇺🇸
+    "^GDAXI",  # DAX 30 🇩🇪
+    "^IXIC",   # NASDAQ Composite 🇺🇸
+    "^RUT",    # Russell 2000 🇺🇸
+    "^N225",   # Nikkei 225 🇯🇵
+]
+
+print(f"Number of tickers: {len(TOP_WLRD)}")
+
+# Download raw data (from 1988-02-01 to 2024-04-30)
+df_raw = YahooDownloader(start_date='1988-02-01',
+                         end_date='2024-04-30',
+                         ticker_list=TOP_WLRD).fetch_data()
 print("Raw data shape:", df_raw.shape)
 
-# ---------------------------
+# Pivot and handle missing data properly
+df_raw = df_raw.pivot(index="date", columns="tic", values=["open", "high", "low", "close", "volume"])
+df_raw = df_raw.fillna(method="ffill").dropna()
+df_raw = df_raw.stack(level="tic").reset_index()
+
 # Normalize Data
-# ---------------------------
 portfolio_norm_df = GroupByScaler(by="tic", scaler=MaxAbsScaler).fit_transform(df_raw)
-# Select required columns (must include "close")
+
+# Select required columns for the environment (must include "close")
 df_portfolio = portfolio_norm_df[["date", "tic", "close", "high", "low"]]
 print("Data shape after selecting required columns:", df_portfolio.shape)
 
-# ---------------------------
-# Split Data into Training and Testing Sets
-# ---------------------------
-df_train = data_split(df_portfolio, '2011-01-01', '2019-01-01')
-df_test  = data_split(df_portfolio, '2020-01-01', '2020-12-31')
+# Split Data exactly as in the research paper:
+df_train = data_split(df_portfolio, '1988-02-01', '2015-12-31')
+df_test  = data_split(df_portfolio, '2016-01-01', '2024-04-30')
+
 print("Training data shape:", df_train.shape)
 print("Testing data shape:", df_test.shape)
+
 
 # ---------------------------
 # Create Portfolio Optimization Environments
@@ -89,7 +98,7 @@ env_test  = PortfolioOptimizationEnv(df=df_test, **env_kwargs)
 # ---------------------------
 agent = DRLAgent(env_train)
 model_kwargs = {
-    "lr": 0.001,
+    "lr": 0.0003,
     "gamma": 0.99,
     "group_size": 4,
     "epsilon": 0.15,
@@ -104,6 +113,14 @@ grpo_model = agent.get_model("grpo", model_kwargs=model_kwargs, policy_kwargs=po
 # ---------------------------
 print("Starting GRPO training...")
 grpo_model.train(total_timesteps=1000)  # Quick test training
+
+# ---------------------------
+# Save the GRPO model weights (state_dict)
+# ---------------------------
+import torch
+save_path = "trained_models/grpo_policy.pt"
+torch.save(grpo_model.policy.state_dict(), save_path)
+print(f"GRPO policy saved to {save_path}")
 
 # ---------------------------
 # Evaluate the GRPO model on the test environment (recording actions)
@@ -160,21 +177,31 @@ def plot_actions(actions, filename="results/grpo_actions.png"):
     plt.savefig(filename)
     plt.close()
 
-# Still produces an error
-def generate_quantstats_report(portfolio_values, filename="results/quantstats_report.html"):
-    import quantstats as qs
-    import numpy as np
-    # Convert portfolio_values to numeric if it's not already
-    if isinstance(portfolio_values, (list, dict)):
-        values = np.array([float(v) for v in portfolio_values.values()] if isinstance(portfolio_values, dict) else portfolio_values)
-    else:
-        values = portfolio_values
-    # Create an index with daily frequency
-    dt_index = pd.date_range(start=datetime.date.today(), periods=len(values), freq='D')
-    price_series = pd.Series(data=values, index=dt_index)
-    # Compute daily returns (percentage change)
-    returns = price_series.pct_change().dropna()
-    qs.reports.html(returns, output=filename, title="GRPO Portfolio Summary")
+def plot_daily_returns(values, filename="results/grpo_daily_returns.png"):
+    returns = pd.Series(values).pct_change().fillna(0)
+    plt.figure(figsize=(10, 6))
+    plt.plot(returns, label="Daily Returns", color='steelblue')
+    plt.xlabel("Timestep")
+    plt.ylabel("Return")
+    plt.title("Daily Returns Over Time")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_drawdown(values, filename="results/grpo_drawdown.png"):
+    cumulative = pd.Series(values)
+    running_max = cumulative.cummax()
+    drawdown = (cumulative - running_max) / running_max
+    plt.figure(figsize=(10, 6))
+    plt.plot(drawdown, label="Drawdown", color='crimson')
+    plt.xlabel("Timestep")
+    plt.ylabel("Drawdown")
+    plt.title("Drawdown Over Time")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
 
 # ---------------------------
 # Call Plot Functions
@@ -182,9 +209,9 @@ def generate_quantstats_report(portfolio_values, filename="results/quantstats_re
 plot_portfolio_value_history(final_value, filename="results/grpo_portfolio_value.png")
 plot_rewards_from_values(final_value, filename="results/grpo_rewards.png")
 plot_actions(actions_history, filename="results/grpo_actions.png")
-try:
-    generate_quantstats_report(final_value, filename="results/quantstats_report.html")
-except Exception as e:
-    print(f"Error generating quantstats report: {e}")
+plot_daily_returns(final_value, filename="results/grpo_daily_returns.png")
+plot_drawdown(final_value, filename="results/grpo_drawdown.png")
 
 print("Plots saved in the 'results' directory.")
+
+evaluate_portfolio(final_value, model_name="GRPO")

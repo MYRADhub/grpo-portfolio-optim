@@ -2,3 +2,5 @@ notes.txt
 *.pyc
 *.png
 *.pt
+/tensorboard_log
+/trained_models
