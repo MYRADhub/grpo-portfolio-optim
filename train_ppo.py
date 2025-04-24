@@ -20,7 +20,7 @@ check_and_make_directories(["data", "trained_models", "tensorboard_log", "result
 TOP_WLRD = ["^GSPC", "^GDAXI", "^IXIC", "^RUT", "^N225"]
 
 df_raw = YahooDownloader(start_date='1988-02-01', end_date='2024-04-30', ticker_list=TOP_WLRD).fetch_data()
-df_raw = df_raw.pivot(index="date", columns="tic", values=["open", "high", "low", "close", "volume"])
+df_raw = df_raw.pivot(index="date", columns="tic", values=["open", "high", "low", "close"])
 df_raw = df_raw.fillna(method="ffill").dropna()
 df_raw = df_raw.stack(level="tic").reset_index()
 
@@ -47,7 +47,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 vec_env_train = DummyVecEnv([lambda: env_train])
 
 ppo_model = PPO("MlpPolicy", vec_env_train, verbose=1, tensorboard_log="tensorboard_log/ppo", learning_rate=0.0003, n_steps=128, batch_size=64)
-ppo_model.learn(total_timesteps=1000)
+ppo_model.learn(total_timesteps=1000000)
 ppo_model.save("trained_models/ppo_portfolio")
 
 # -----------------------------

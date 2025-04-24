@@ -85,7 +85,7 @@ policy_kwargs = {
     "k_size": 3
 }
 model = agent.get_model("pg", model_kwargs=model_kwargs, policy_kwargs=policy_kwargs)
-trained_model = DRLAgent.train_model(model, episodes=5)
+trained_model = DRLAgent.train_model(model, episodes=100)
 
 # ---------------------------
 # Evaluate on Test Environment

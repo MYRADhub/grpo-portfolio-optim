@@ -50,7 +50,7 @@ class GRPOAgent:
         self, 
         env, 
         policy_kwargs=None, 
-        lr=0.001, 
+        lr=0.0003, 
         gamma=0.99, 
         group_size=4,
         epsilon=0.15,

@@ -1,5 +1,4 @@
 import numpy as np
-import datetime
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.preprocessing import MaxAbsScaler
@@ -12,9 +11,6 @@ from finrl.meta.preprocessor.preprocessors import GroupByScaler, data_split
 from finrl.meta.env_portfolio_optimization.env_portfolio_optimization import PortfolioOptimizationEnv
 from finrl.main import check_and_make_directories
 
-# ---------------------------
-# Monkey-Patch DRLAgent.get_model to support "grpo"
-# ---------------------------
 from grpo import GRPOAgent  # import your custom GRPO agent
 
 _original_get_model = DRLAgent.get_model
@@ -23,7 +19,7 @@ def get_model_with_grpo(self, model_name, device="cpu", model_kwargs=None, polic
     model_kwargs = {} if model_kwargs is None else model_kwargs
     policy_kwargs = {} if policy_kwargs is None else policy_kwargs
     if model_name.lower() == "grpo":
-        lr = model_kwargs.get("lr", 0.001)
+        lr = model_kwargs.get("lr", 0.0003)
         gamma = model_kwargs.get("gamma", 0.99)
         group_size = model_kwargs.get("group_size", 4)
         epsilon = model_kwargs.get("epsilon", 0.15)
@@ -45,11 +41,11 @@ check_and_make_directories(["data", "trained_models", "tensorboard_log", "result
 # ---------------------------
 
 TOP_WLRD = [
-    "^GSPC",   # S&P 500 🇺🇸
-    "^GDAXI",  # DAX 30 🇩🇪
-    "^IXIC",   # NASDAQ Composite 🇺🇸
-    "^RUT",    # Russell 2000 🇺🇸
-    "^N225",   # Nikkei 225 🇯🇵
+    "^GSPC",   # S&P 500 
+    "^GDAXI",  # DAX 30 
+    "^IXIC",   # NASDAQ Composite 
+    "^RUT",    # Russell 2000 
+    "^N225",   # Nikkei 225 
 ]
 
 print(f"Number of tickers: {len(TOP_WLRD)}")
@@ -112,7 +108,7 @@ grpo_model = agent.get_model("grpo", model_kwargs=model_kwargs, policy_kwargs=po
 # Train the GRPO Model
 # ---------------------------
 print("Starting GRPO training...")
-grpo_model.train(total_timesteps=1000)  # Quick test training
+grpo_model.train(total_timesteps=1000000)  # Quick test training
 
 # ---------------------------
 # Save the GRPO model weights (state_dict)
