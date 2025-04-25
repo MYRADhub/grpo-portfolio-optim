@@ -47,7 +47,7 @@ distlib==0.3.9
 docutils==0.20.1
 dulwich==0.22.8
 ecos==2.0.14
-ElegantRL @ git+https://github.com/AI4Finance-Foundation/ElegantRL.git@5e828af1503098f4da046c0f12432dbd4ef8bd97
+ElegantRL @ git+https://github.com/AI4Finance-Foundation/ElegantRL.git
 empyrical==0.5.5
 empyrical-reloaded==0.5.11
 exceptiongroup==1.2.2
@@ -57,7 +57,7 @@ Farama-Notifications==0.0.4
 fastjsonschema==2.21.1
 filelock==3.18.0
 findpython==0.6.3
-finrl @ git+https://github.com/AI4Finance-Foundation/FinRL.git@d25d902a6de54931a329adc38a2663e8f576adc4
+finrl @ git+https://github.com/AI4Finance-Foundation/FinRL.git
 fonttools==4.53.0
 frozendict==2.4.6
 frozenlist==1.5.0

@@ -101,7 +101,7 @@ model_kwargs = {
     "beta": 0.0005,
     "device": "cpu"
 }
-policy_kwargs = {"hidden_sizes": [128, 128]}  # Example policy parameters; adjust as needed.
+policy_kwargs = {"hidden_sizes": [64, 64]}  # Example policy parameters; adjust as needed.
 grpo_model = agent.get_model("grpo", model_kwargs=model_kwargs, policy_kwargs=policy_kwargs)
 
 # ---------------------------
