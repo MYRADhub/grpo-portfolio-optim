@@ -80,6 +80,9 @@ class GRPOAgent:
         act_dim = env.action_space.shape[0]
         if policy_kwargs is None:
             policy_kwargs = {}
+        self.obs_dim = obs_dim
+        self.act_dim = act_dim
+        self.policy_kwargs = policy_kwargs
         self.policy = GRPOPolicy(input_dim=obs_dim, output_dim=act_dim, **policy_kwargs).to(device)
         self.optimizer = optim.AdamW(self.policy.parameters(), lr=lr)
         self.device = device
@@ -145,8 +148,9 @@ class GRPOAgent:
 
         # Freeze current policy as old policy
         old_policy = GRPOPolicy(
-            input_dim=int(np.prod(self.env.observation_space.shape)),
-            output_dim=self.env.action_space.shape[0]
+            input_dim=self.obs_dim,
+            output_dim=self.act_dim,
+            **self.policy_kwargs
         ).to(self.device)
         old_policy.load_state_dict(self.policy.state_dict())
 
