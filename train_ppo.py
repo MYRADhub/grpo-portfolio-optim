@@ -21,7 +21,7 @@ TOP_WLRD = ["^GSPC", "^GDAXI", "^IXIC", "^RUT", "^N225"]
 
 df_raw = YahooDownloader(start_date='1988-02-01', end_date='2024-04-30', ticker_list=TOP_WLRD).fetch_data()
 df_raw = df_raw.pivot(index="date", columns="tic", values=["open", "high", "low", "close"])
-df_raw = df_raw.fillna(method="ffill").dropna()
+df_raw = df_raw.ffill().dropna()
 df_raw = df_raw.stack(level="tic").reset_index()
 
 portfolio_norm_df = GroupByScaler(by="tic", scaler=MaxAbsScaler).fit_transform(df_raw)

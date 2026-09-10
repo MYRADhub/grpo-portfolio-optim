@@ -10,13 +10,19 @@ from finrl.agents.portfolio_optimization.architectures import EIIE
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 from finrl.meta.preprocessor.preprocessors import GroupByScaler, data_split
 from finrl.meta.env_portfolio_optimization.env_portfolio_optimization import PortfolioOptimizationEnv
+from finrl.main import check_and_make_directories
 from grpo import GRPOAgent
+
+# ---------- Ensure Output Directories Exist ----------
+# The training scripts create these, but plots.py is documented as a standalone
+# entry point and must not depend on a training run having happened first.
+check_and_make_directories(["results", "trained_models"])
 
 # ---------- Prepare Test Data ----------
 tickers = ["^GSPC", "^GDAXI", "^IXIC", "^RUT", "^N225"]
 df_raw = YahooDownloader(start_date='1988-02-01', end_date='2024-04-30', ticker_list=tickers).fetch_data()
 df_raw = df_raw.pivot(index="date", columns="tic", values=["open", "high", "low", "close", "volume"])
-df_raw = df_raw.fillna(method="ffill").dropna()
+df_raw = df_raw.ffill().dropna()
 df_raw = df_raw.stack(level="tic").reset_index()
 df_norm = GroupByScaler(by="tic", scaler=MaxAbsScaler).fit_transform(df_raw)
 df_portfolio = df_norm[["date", "tic", "close", "high", "low"]]

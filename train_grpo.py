@@ -58,7 +58,7 @@ print("Raw data shape:", df_raw.shape)
 
 # Pivot and handle missing data properly
 df_raw = df_raw.pivot(index="date", columns="tic", values=["open", "high", "low", "close", "volume"])
-df_raw = df_raw.fillna(method="ffill").dropna()
+df_raw = df_raw.ffill().dropna()
 df_raw = df_raw.stack(level="tic").reset_index()
 
 # Normalize Data
