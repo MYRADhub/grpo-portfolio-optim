@@ -10,7 +10,13 @@ from finrl.agents.portfolio_optimization.architectures import EIIE
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 from finrl.meta.preprocessor.preprocessors import GroupByScaler, data_split
 from finrl.meta.env_portfolio_optimization.env_portfolio_optimization import PortfolioOptimizationEnv
+from finrl.main import check_and_make_directories
 from grpo import GRPOAgent
+
+# ---------- Ensure Output Directories Exist ----------
+# The training scripts create these, but plots.py is documented as a standalone
+# entry point and must not depend on a training run having happened first.
+check_and_make_directories(["results", "trained_models"])
 
 # ---------- Prepare Test Data ----------
 tickers = ["^GSPC", "^GDAXI", "^IXIC", "^RUT", "^N225"]
