@@ -44,7 +44,7 @@ print("Raw data shape:", portfolio_raw_df.shape)
 
 # Handle missing values
 portfolio_raw_df = portfolio_raw_df.pivot(index="date", columns="tic", values=["open", "high", "low", "close", "volume"])
-portfolio_raw_df = portfolio_raw_df.fillna(method="ffill").dropna()
+portfolio_raw_df = portfolio_raw_df.ffill().dropna()
 portfolio_raw_df = portfolio_raw_df.stack(level="tic").reset_index()
 
 # Normalize
